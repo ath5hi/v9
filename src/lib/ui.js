@@ -1,98 +1,119 @@
 import { getLaunch, searchLaunches } from './api.js';
 import { el } from './elements.js';
 
-/**
- * Býr til leitarform.
- * @param {(e: SubmitEvent) => void} searchHandler Fall sem keyrt er þegar leitað er.
- * @param {string | undefined} query Leitarstrengur.
- * @returns {HTMLElement} Leitarform.
- */
+// Býr til leitarform
 export function renderSearchForm(searchHandler, query = undefined) {
-  /* TODO útfæra */
-}
-
-/**
- * Setur „loading state“ skilabað meðan gögn eru sótt.
- * @param {HTMLElement} parentElement Element sem á að birta skilbaoð í.
- * @param {Element | undefined} searchForm Leitarform sem á að gera óvirkt.
- */
-function setLoading(parentElement, searchForm = undefined) {
-  /* TODO útfæra */
-}
-
-/**
- * Fjarlægir „loading state“.
- * @param {HTMLElement} parentElement Element sem inniheldur skilaboð.
- * @param {Element | undefined} searchForm Leitarform sem á að gera virkt.
- */
-function setNotLoading(parentElement, searchForm = undefined) {
-  /* TODO útfæra */
-}
-
-/**
- * Birta niðurstöður úr leit.
- * @param {import('./api.types.js').Launch[] | null} results Niðurstöður úr leit
- * @param {string} query Leitarstrengur.
- */
-function createSearchResults(results, query) {
-  /* TODO útfæra */
-}
-
-/**
- *
- * @param {HTMLElement} parentElement Element sem á að birta niðurstöður í.
- * @param {Element} searchForm Form sem á að gera óvirkt.
- * @param {string} query Leitarstrengur.
- */
-export async function searchAndRender(parentElement, searchForm, query) {
-  /* TODO útfæra */
-}
-
-/**
- * Sýna forsíðu, hugsanlega með leitarniðurstöðum.
- * @param {HTMLElement} parentElement Element sem á að innihalda forsíðu.
- * @param {(e: SubmitEvent) => void} searchHandler Fall sem keyrt er þegar leitað er.
- * @param {string | undefined} query Leitarorð, ef eitthvað, til að sýna niðurstöður fyrir.
- */
-export function renderFrontpage(
-  parentElement,
-  searchHandler,
-  query = undefined,
-) {
-  const heading = el('h1', {}, 'Geimskotaleitin 🚀');
-  const searchForm = renderSearchForm(searchHandler, query);
-  const container = el('main', {}, heading, searchForm);
-  parentElement.appendChild(container);
-
-  if (!query) {
-    return;
-  }
-
-  searchAndRender(parentElement, searchForm, query);
-}
-
-/**
- * Sýna geimskot.
- * @param {HTMLElement} parentElement Element sem á að innihalda geimskot.
- * @param {string} id Auðkenni geimskots.
- */
-export async function renderDetails(parentElement, id) {
-  const container = el('main', {});
-  const backElement = el(
-    'div',
-    { class: 'back' },
-    el('a', { href: '/' }, 'Til baka'),
+  const form = el(
+    'form',
+    { class: 'search-form' },
+    el('input', { type: 'search', name: 'query', placeholder: 'Leita að geimskotum...', value: query ?? '' }),
+    el('button', {}, 'Leita')
   );
 
-  parentElement.appendChild(container);
+  form.addEventListener('submit', searchHandler);
 
-  /* TODO setja loading state og sækja gögn */
+  return form;
+}
 
-  // Tómt og villu state, við gerum ekki greinarmun á þessu tvennu, ef við
-  // myndum vilja gera það þyrftum við að skilgreina stöðu fyrir niðurstöðu
-  if (!result) {
-    /* TODO útfæra villu og tómt state */
+// Setur "loading state" á meðan gögn eru sótt
+function setLoading(parentElement, searchForm) {
+  const loadingIndicator = el('div', { class: 'loading-indicator' }, 'Sæki gögn...');
+  parentElement.appendChild(loadingIndicator);
+
+  if (searchForm) {
+    const inputsAndButtons = searchForm.querySelectorAll('input, button');
+    inputsAndButtons.forEach((inputOrButton) => {
+      inputOrButton.disabled = true; // Directly assign the property without returning it
+    });
+  }
+}
+
+// Fjarlægir "loading state"
+function setNotLoading(parentElement, searchForm) {
+  const loadingIndicator = parentElement.querySelector('.loading-indicator');
+  loadingIndicator?.remove();
+
+  if (searchForm) {
+    const inputsAndButtons = searchForm.querySelectorAll('input, button');
+    inputsAndButtons.forEach((inputOrButton) => {
+      inputOrButton.disabled = false;
+    });
+  }
+}
+// Birtir niðurstöður úr leit
+function createSearchResults(results, query) {
+  const list = el('ul', { class: 'search-results' });
+
+  if (!results || results.length === 0) {
+    const message = results ? `Engar niðurstöður fundust fyrir: "${query}"` : `Leit tókst ekki: "${query}"`;
+    list.appendChild(el('li', { class: 'search-result-item' }, message));
+    return list;
   }
 
-  /* TODO útfæra ef gögn */
+  results.forEach((result) => {
+    const item = el(
+      'li',
+      { class: 'search-result-item' },
+      el('a', { href: `/?id=${result.id}` }, result.name),
+      el('span', {}, result.status.name)
+    );
+    if (result.mission && result.mission.name) {
+      item.appendChild(el('span', {}, `Mission: ${result.mission.name}`));
+    }
+    list.appendChild(item);
+  });
+
+  return list;
+}
+
+// Leitar og birtir niðurstöður
+export async function searchAndRender(parentElement, searchForm, query) {
+  setLoading(parentElement, searchForm);
+
+  try {
+    const results = await searchLaunches(query);
+    const searchResults = createSearchResults(results, query);
+    parentElement.appendChild(searchResults);
+  } catch (error) {
+    console.error('Error fetching search results:', error);
+    const errorMessage = el('p', { class: 'error-message' }, 'Ekki tókst að sækja leitarniðurstöður. Reyndu aftur.');
+    parentElement.appendChild(errorMessage);
+  } finally {
+    setNotLoading(parentElement, searchForm);
+  }
+}
+
+// Sýnir forsíðu með mögulegum leitarniðurstöðum
+export function renderFrontpage(parentElement, searchHandler, query = undefined) {
+  const heading = el('h1', { class: 'heading' }, 'Geimskotaleitin 🚀');
+  const searchForm = renderSearchForm(searchHandler, query);
+
+  const container = el('div', {}, heading, searchForm);
+  parentElement.appendChild(container);
+
+  if (query) {
+    searchAndRender(parentElement, searchForm, query);
+  }
+}
+
+// Sýnir upplýsingar um eitt geimskot
+export async function renderDetails(parentElement, id) {
+  setLoading(parentElement);
+
+  try {
+    const launchDetails = await getLaunch(id);
+    if (launchDetails) {
+      const details = el('div', { class: 'launch-details' },
+        el('h1', {}, launchDetails.name),
+      );
+      parentElement.appendChild(details);
+    } else {
+      parentElement.appendChild(el('p', {}, 'Upplýsingar um geimskotið fundust ekki.'));
+    }
+  } catch (error) {
+    console.error('Error fetching launch details:', error);
+    parentElement.appendChild(el('p', {}, 'Villa kom upp við að sækja upplýsingar.'));
+  } finally {
+    setNotLoading(parentElement);
+  }
 }

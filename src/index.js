@@ -7,7 +7,18 @@ import { renderDetails, renderFrontpage, searchAndRender } from './lib/ui.js';
  * @returns {Promise<void>}
  */
 async function onSearch(e) {
-  /* TODO útfæra */
+  e.preventDefault();
+
+  const form = e.target;
+  const input = form.querySelector('input[name="query"]');
+  const value = input ? input.value : '';
+
+  if (!value) {
+    return;
+  }
+
+  await searchAndRender(document.body, form, value);
+  window.history.pushState({}, '', `/?query=${encodeURIComponent(value)}`);
 }
 
 /**
@@ -16,13 +27,23 @@ async function onSearch(e) {
  * leitarniðurstöðum ef `query` er gefið.
  */
 function route() {
-  /* TODO athuga hvaða síðu á að birta og birta */
+  const { search } = window.location;
+  const qs = new URLSearchParams(search);
+  const query = qs.get('query') ?? undefined;
+  const id = qs.get('id');
+
+  const parentElement = document.body;
+  empty(parentElement);
+
+  if (id) {
+    renderDetails(parentElement, id);
+  } else {
+    renderFrontpage(parentElement, onSearch, query);
+  }
 }
 
-// Bregst við því þegar við notum vafra til að fara til baka eða áfram.
 window.onpopstate = () => {
-  /* TODO bregðast við */
+  route();
 };
 
-// Athugum í byrjun hvað eigi að birta.
 route();

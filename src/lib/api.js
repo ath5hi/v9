@@ -33,7 +33,36 @@ export async function sleep(ms) {
  *  kom upp.
  */
 export async function searchLaunches(query) {
-  /* TODO útfæra */
+  const url = new URL('launch', API_URL);
+  url.searchParams.set('search', query);
+  url.searchParams.set('mode', 'list');
+
+  let response;
+  try {
+    response = await fetch(url);
+  } catch (e) {
+    console.error('Villa kom upp við að sækja gögn');
+    return null;
+  }
+
+  if (!response.ok) {
+    console.error(
+      'Villa við að sækja gögn, ekki 200 staða',
+      response.status,
+      response.statusText
+    );
+    return null;
+  }
+
+  let json;
+  try {
+    json = await response.json();
+  } catch (e) {
+    console.error('Villa við að vinna úr JSON');
+    return null;
+  }
+
+  return json.results;
 }
 
 /**
@@ -42,5 +71,32 @@ export async function searchLaunches(query) {
  * @returns {Promise<LaunchDetail | null>} Geimskot.
  */
 export async function getLaunch(id) {
-  /* TODO útfæra */
+  const url = new URL(`launch/${encodeURIComponent(id)}`, API_URL);
+
+  let response;
+  try {
+    response = await fetch(url);
+  } catch (e) {
+    console.error('Villa kom upp við að sækja gögn fyrir geimskotið');
+    return null;
+  }
+
+  if (!response.ok) {
+    console.error(
+      'Villa við að sækja gögn fyrir geimskotið, ekki 200 staða',
+      response.status,
+      response.statusText
+    );
+    return null;
+  }
+
+  let json;
+  try {
+    json = await response.json();
+  } catch (e) {
+    console.error('Villa við að vinna úr JSON fyrir geimskotið');
+    return null;
+  }
+
+  return json;
 }
